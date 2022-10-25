@@ -3,9 +3,12 @@ package transaction;
 import amount.Amount;
 import exceptions.NegativeAmountException;
 
+import java.math.BigDecimal;
 import java.time.Clock;
 import java.time.LocalDateTime;
 import java.util.UUID;
+
+import static amount.Amount.amountOf;
 
 public class TransactionService {
 
@@ -19,8 +22,18 @@ public class TransactionService {
     }
 
     public Transaction deposit(UUID accountId, Amount amount) throws NegativeAmountException {
-        Transaction deposit = new Transaction(accountId, LocalDateTime.now(clock), amount, amount, TypeTransaction.DEPOSIT);
-        return this.transactionsDAO.save(accountId, deposit);
+        LocalDateTime date = LocalDateTime.now(clock);
+        Amount currentBalance = getCurrentBalance(accountId);
+
+        Transaction deposit = new Transaction(accountId, date, amount, currentBalance.plus(amount), TypeTransaction.DEPOSIT);
+        this.transactionsDAO.save(accountId, deposit);
+        return deposit;
+    }
+
+    private Amount getCurrentBalance(UUID accountId) throws NegativeAmountException {
+        return transactionsDAO.findLast(accountId)
+                .map(Transaction::balanceAfterExecution)
+                .orElse(amountOf(BigDecimal.ZERO));
     }
 
 }
