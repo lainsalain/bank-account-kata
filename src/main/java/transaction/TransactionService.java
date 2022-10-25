@@ -30,6 +30,11 @@ public class TransactionService {
         return deposit;
     }
 
+    public Transaction withdrawal(UUID accountId, Amount amount) throws NegativeAmountException {
+        Transaction withdrawal = new Transaction(accountId, LocalDateTime.now(clock), amount, amount, TypeTransaction.WITHDRAWAL);
+        return this.transactionsDAO.save(accountId, withdrawal);
+    }
+
     private Amount getCurrentBalance(UUID accountId) throws NegativeAmountException {
         return transactionsDAO.findLast(accountId)
                 .map(Transaction::balanceAfterExecution)
