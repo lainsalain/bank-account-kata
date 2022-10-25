@@ -3,10 +3,13 @@ package transaction;
 import amount.Amount;
 import exceptions.NegativeAmountException;
 import exceptions.NotEnoughMoneyException;
+import utils.StatementPrinter;
+import utils.TransactionFormatter;
 
 import java.math.BigDecimal;
 import java.time.Clock;
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.UUID;
 
 import static amount.Amount.amountOf;
@@ -15,11 +18,14 @@ public class TransactionService {
 
     private final TransactionsDAO transactionsDAO;
     private final Clock clock;
+    private final TransactionFormatter formatter;
+    private final StatementPrinter printer;
 
-
-    public TransactionService(TransactionsDAO transactionsDAO, Clock clock) {
+    public TransactionService(TransactionsDAO transactionsDAO, Clock clock, TransactionFormatter formatter, StatementPrinter printer) {
         this.transactionsDAO = transactionsDAO;
         this.clock = clock;
+        this.formatter = formatter;
+        this.printer = printer;
     }
 
     public Transaction deposit(UUID accountId, Amount amount) throws NegativeAmountException {
@@ -45,6 +51,12 @@ public class TransactionService {
         return transactionsDAO.findLast(accountId)
                 .map(Transaction::balanceAfterExecution)
                 .orElse(amountOf(BigDecimal.ZERO));
+    }
+
+    public void printStatement(UUID accountId) {
+        final List<Transaction> transactions = transactionsDAO.findByAccountId(accountId);
+        final List<String> formattedTransactions = formatter.format(transactions);
+        printer.print(formattedTransactions);
     }
 
 }

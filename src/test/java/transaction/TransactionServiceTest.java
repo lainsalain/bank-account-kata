@@ -13,12 +13,15 @@ import org.junit.jupiter.params.provider.MethodSource;
 import org.mockito.InOrder;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import utils.StatementPrinter;
+import utils.TransactionFormatter;
 
 import java.math.BigDecimal;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.stream.Stream;
@@ -35,12 +38,18 @@ class TransactionServiceTest {
     @Mock
     private TransactionsDAO transactionsDAO;
     private TransactionService transactionService;
+    @Mock
+    private TransactionFormatter transactionFormatter;
+    @Mock
+    private StatementPrinter statementPrinter;
+
 
 
     @BeforeEach
     void setUp() {
-        this.transactionService = new TransactionService(transactionsDAO, clock);
+        this.transactionService = new TransactionService(transactionsDAO, clock, transactionFormatter, statementPrinter);
     }
+
 
     @Test
     @DisplayName("Should deposit the amount parameter in the bank account and return the deposit")
@@ -125,5 +134,25 @@ class TransactionServiceTest {
                         ))),
                 Arguments.of(Optional.<Transaction>empty())
         );
+    }
+
+    @Test
+    @DisplayName("Should print all transactions from the account id")
+    void shouldPrintAllTransactionsFromAccountId() throws NegativeAmountException {
+        final UUID accountId = UUID.randomUUID();
+        final List<Transaction> transactions = List.of(
+                new Transaction(accountId, LocalDateTime.now(clock), amountOf(new BigDecimal("100.00")), amountOf(new BigDecimal("50.00")), TypeTransaction.DEPOSIT)
+        );
+        when(transactionsDAO.findByAccountId(accountId)).thenReturn(transactions);
+        final List<String> formattedTransactions = List.of("List of transactions");
+        when(transactionFormatter.format(transactions)).thenReturn(formattedTransactions);
+
+        transactionService.printStatement(accountId);
+
+        InOrder verifyOrder = inOrder(transactionsDAO, transactionFormatter, statementPrinter);
+        verifyOrder.verify(transactionsDAO).findByAccountId(accountId);
+        verifyOrder.verify(transactionFormatter).format(transactions);
+        verifyOrder.verify(statementPrinter).print(formattedTransactions);
+        verifyOrder.verifyNoMoreInteractions();
     }
 }
