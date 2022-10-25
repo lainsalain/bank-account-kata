@@ -2,6 +2,7 @@ package transaction;
 
 import amount.Amount;
 import exceptions.NegativeAmountException;
+import exceptions.NotEnoughMoneyException;
 
 import java.math.BigDecimal;
 import java.time.Clock;
@@ -30,9 +31,14 @@ public class TransactionService {
         return deposit;
     }
 
-    public Transaction withdrawal(UUID accountId, Amount amount) throws NegativeAmountException {
-        Transaction withdrawal = new Transaction(accountId, LocalDateTime.now(clock), amount, amount, TypeTransaction.WITHDRAWAL);
-        return this.transactionsDAO.save(accountId, withdrawal);
+    public Transaction withdrawal(UUID accountId, Amount amount) throws NegativeAmountException, NotEnoughMoneyException {
+        LocalDateTime date = LocalDateTime.now(clock);
+        Amount currentBalance = getCurrentBalance(accountId);
+        if(amount.compareTo(currentBalance) > 0) throw new NotEnoughMoneyException();
+
+        Transaction withdrawal = new Transaction(accountId, date, amount, currentBalance.minus(amount), TypeTransaction.WITHDRAWAL);
+        this.transactionsDAO.save(accountId, withdrawal);
+        return withdrawal;
     }
 
     private Amount getCurrentBalance(UUID accountId) throws NegativeAmountException {
